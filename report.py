@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from qgis.PyQt.QtWidgets import QDialog, QVBoxLayout, QComboBox, QCheckBox, QLabel, QPushButton, QScrollArea, QWidget, QGridLayout, QMessageBox, QHBoxLayout
-from qgis.core import QgsProject
+from qgis.core import QgsProject, QgsExpression
 from reportlab.lib.pagesizes import A4
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
@@ -39,7 +39,7 @@ class RapportEEE(QDialog):
         layout.addWidget(self.btn_ok)
         self.btn_ok.clicked.connect(self.accept)
 
-        # --- Charger la couche ---
+        # Charger la couche
         layers = QgsProject.instance().mapLayersByName("Form_EEE")
         if not layers:
             QMessageBox.critical(self, "Erreur", "Couche 'Form_EEE' introuvable.")
@@ -48,7 +48,7 @@ class RapportEEE(QDialog):
 
         self.site_field = "site"
 
-        # --- Champs affichés manuellement ---
+        # Champs EEE
         self.champs_affiches = [
             "site",
             "zgie",
@@ -82,6 +82,11 @@ class RapportEEE(QDialog):
             "photo1"
         ]
 
+        # Evenement
+
+        self.champs_evenement = ["Date", "Heure", "ID_Proj"]
+        self.champs_affiches.extend(self.champs_evenement)
+
         self.remplir_sites()
         self.remplir_champs()
 
@@ -93,7 +98,10 @@ class RapportEEE(QDialog):
     def remplir_champs(self):
         self.checkboxes = []
         for i, champ in enumerate(self.champs_affiches):
-            alias = self.layer.fields().field(champ).alias() or champ
+            if champ in self.layer.fields().names():
+                alias = self.layer.fields().field(champ).alias() or champ
+            else:
+                alias = f"{champ}"
             cb = QCheckBox(alias)
             cb.setToolTip(champ)
             self.champ_layout.addWidget(cb, i, 0)
@@ -145,59 +153,95 @@ def get_display_value(layer, feature, field_name):
     # --- Valeur par défaut ---
     return str(value)
 
-
 # --- Exécution ---
 dlg = RapportEEE()
 if dlg.exec_():
     site, champs = dlg.get_selection()
 
-    # Récupération des données dans QGIS
+    # --- Récupération des données dans QGIS ---
     layer = QgsProject.instance().mapLayersByName("Form_EEE")[0]
-    expr = f'"site" = \'{site}\''
+    expr = QgsExpression.createFieldEqualityExpression("site", site)
     layer.selectByExpression(expr)
     feats = layer.selectedFeatures()
+
     if not feats:
         QMessageBox.warning(None, "Avertissement", "Aucun enregistrement trouvé pour ce site.")
     else:
         feat = feats[0]  # premier enregistrement
 
+        # --- Récupération des données associées dans la table Evenement ---
+        layer_evt = QgsProject.instance().mapLayersByName("Evenement")[0]
+        id_even = feat.attribute("ID_EVEN")
+        feat_evt = None
+
+        if id_even is not None:
+            expr_evt = f'"ID_EVEN" = \'{id_even}\''
+            layer_evt.selectByExpression(expr_evt)
+            feats_evt = layer_evt.selectedFeatures()
+            if feats_evt:
+                feat_evt = feats_evt[0]
+
+        # --- Fonction de récupération de la valeur affichée pour Evenement ---
+        def get_evt_display_value(field_name):
+            if not feat_evt:
+                return ""
+            field = feat_evt.fields().field(field_name)
+            cfg = field.editorWidgetSetup()
+            value = feat_evt.attribute(field_name)
+
+            if value in (None, ""):
+                return ""
+            
+            if hasattr(value, "toString"):
+                type_name = type(value).__name__
+                if "QDateTime" in type_name:
+                    return value.toString("yyyy-MM-dd HH:mm")
+                elif "QTime" in type_name:
+                    return value.toString("HH:mm")
+                elif "QDate" in type_name:
+                    return value.toString("yyyy-MM-dd")
+
+            # ValueMap
+            if cfg.type() == "ValueMap":
+                mapping = cfg.config().get("map", {})
+                for k, v in mapping.items():
+                    if str(k) == str(value):
+                        return v
+                return str(value)
+
+            # ValueRelation
+            if cfg.type() == "ValueRelation":
+                rel_layer_id = cfg.config().get("Layer")
+                key_field = cfg.config().get("Key")
+                value_field = cfg.config().get("Value")
+                rel_layer = QgsProject.instance().mapLayer(rel_layer_id)
+                if rel_layer:
+                    for f in rel_layer.getFeatures():
+                        if str(f[key_field]) == str(value):
+                            return str(f[value_field])
+                return str(value)
+
+            # Valeur brute sinon
+            return str(value)
+
         # --- Définir les sections et champs associés ---
         sections = {
-            "Identification": ["site"],
+            "Identification": ["site", "Date", "Heure", "ID_Proj"],
             "Localisation": [
-                            "site",
-                            "zgie",
-                            "region",
-                            "Munic",
-                            "mrc",
-                            "Respo",
-                            "Milieu",
-                            "Repere",
-                            "Contrainte"],
+                "site", "zgie", "region", "Munic", "mrc", "Respo",
+                "Milieu", "Repere", "Contrainte"
+            ],
             "Observations": [
-                            "categorie",
-                            "EEE_Type",
-                            "lat_flore",
-                            "autre_sp",
-                            "autre_nom_latin",
-                            "Superf_m2",
-                            "StadeDev",
-                            "site_autre_stade",
-                            "site_stade_1",
-                            "site_stade_2",
-                            "site_stade_3",
-                            "site_stade_4",
-                            "site_stade_5",
-                            "cause_probag",
-                            "hote"],
-            "Traitement": [            
-                            "Trt_av",
-                            "Trt_avQui",
-                            "Trt_avType",
-                            "TraitRecom"],
-            "Commentaires et photos": [
-                            "EEE_Comment",
-                            "photo1"]
+                "categorie", "EEE_Type", "lat_flore", "autre_sp",
+                "autre_nom_latin", "Superf_m2", "StadeDev",
+                "site_autre_stade", "site_stade_1", "site_stade_2",
+                "site_stade_3", "site_stade_4", "site_stade_5",
+                "cause_probag", "hote"
+            ],
+            "Traitement": [
+                "Trt_av", "Trt_avQui", "Trt_avType", "TraitRecom"
+            ],
+            "Commentaires et photos": ["EEE_Comment", "photo1"]
         }
 
         # --- Création du PDF ---
@@ -205,25 +249,39 @@ if dlg.exec_():
         styles = getSampleStyleSheet()
         story = []
 
-        story.append(Paragraph("Espèces exotiques envahissantes <br/> Première visite de site", styles["Title"]))
+        story.append(Paragraph(
+            "Espèces exotiques envahissantes <br/> Première visite de site",
+            styles["Title"]
+        ))
         story.append(Spacer(1, 20))
 
-        # Parcourir les sections et injecter les champs sélectionnés
+        # --- Parcourir les sections et injecter les champs sélectionnés ---
         for titre, liste_champs in sections.items():
             story.append(Paragraph(titre, styles["Heading2"]))
             contenu = []
+
             for champ in liste_champs:
                 if champ in champs:  # seulement ceux cochés
-                    alias = layer.fields().field(champ).alias() or champ
-                    valeur = get_display_value(layer, feat, champ)
-                    #Ignorer les valeurs nulles
+                    if champ in layer.fields().names():
+                        alias = layer.fields().field(champ).alias() or champ
+                        valeur = get_display_value(layer, feat, champ)
+                    elif feat_evt and champ in feat_evt.fields().names():
+                        alias = feat_evt.fields().field(champ).alias() or champ
+                        valeur = get_evt_display_value(champ)
+                    else:
+                        continue
+
+                    # Ignorer les valeurs nulles
                     if valeur not in ("", "NULL", "Null"):
                         contenu.append(f"<b>{alias}</b> : {valeur}")
+
             if contenu:
                 story.append(Paragraph("<br/>".join(contenu), styles["BodyText"]))
             else:
                 story.append(Paragraph("(Aucun champ sélectionné pour cette section)", styles["Italic"]))
+
             story.append(Spacer(1, 15))
 
+        # --- Génération du PDF ---
         doc.build(story)
         print("Rapport généré avec succès.")
