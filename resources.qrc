@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/plugins/RapportGeofluence" >
+        <file>icon.png</file>
+    </qresource>
+</RCC>

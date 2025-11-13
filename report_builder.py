@@ -1,9 +1,19 @@
+"""
+Ce script permet de générer automatiquement une structure de rapport à partir des fichiers QML des formulaires.
+La sortie apparait dans le terminal et peut être copié dans les scripts des rapports.
+L'outil parcours le QML pour extraire les noms des champs utilisés dans le formulaire ainsi que le nom des sections du formulaire.
+Les sections vides sont ignorées.
+
+"""
+
 import xml.etree.ElementTree as ET
 
-# --- Paramètres ---
+# Param
+
 qml_path = "activitedetection.qml"
 
-# --- Lecture du fichier ---
+# Lecture du fichier
+
 tree = ET.parse(qml_path)
 root = tree.getroot()
 
@@ -47,17 +57,14 @@ def parcourir_element(element, section_actuelle=None):
     return champs_total
 
 
-# --- Parcours ---
+# Parcours les éléments
 for elem in root.iter("attributeEditorContainer"):
     parcourir_element(elem)
 
-# Dédupliquer en gardant l'ordre
+# Champs affichés
 champs_affiches = list(dict.fromkeys(champs_affiches))
 
-
-# -------------------------------------------------------------------
-#           🔽 OUTPUT EXACTEMENT FORMATTÉ COMME TON EXEMPLE
-# -------------------------------------------------------------------
+# Sortie
 
 def format_list(lst, indent=12):
     """
