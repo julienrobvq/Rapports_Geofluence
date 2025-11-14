@@ -2,7 +2,7 @@
 
 from .base_rapport_dialog import BaseRapportDialog
 
-class RapportForm_physicochimieDialog(BaseRapportDialog):
+class RapportPhysicochimieDialog(BaseRapportDialog):
     def __init__(self):
 
         champs = [
