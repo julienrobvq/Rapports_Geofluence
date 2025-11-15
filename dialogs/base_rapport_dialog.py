@@ -291,7 +291,7 @@ class BaseRapportDialog(QDialog):
         feats_form = self.layer_form.selectedFeatures()
 
         if not feats_form:
-            QMessageBox.warning(self, "Avertissement", "Aucun enregistrement trouvé pour ces événements.")
+            QMessageBox.warning(self, "Avertissement", "Aucun enregistrement trouvé pour ce projet.")
             return
 
         # --- Choisir le fichier de sortie ---
@@ -332,7 +332,6 @@ class BaseRapportDialog(QDialog):
             
             for titre, liste_champs in self.sections.items():
 
-                story.append(Paragraph(titre, styles["Heading2"]))
                 contenu = []
 
                 for champ in liste_champs:
@@ -368,24 +367,29 @@ class BaseRapportDialog(QDialog):
                         contenu.append(("texte", alias, valeur))
 
                 # Ajouter le contenu final de la section
+
                 if contenu:
+                    story.append(Paragraph(titre, styles["Heading2"]))
+
                     for typ, alias, valeur in contenu:
+
+                        # --- CHAMPS TEXTE ---
                         if typ == "texte":
                             story.append(Paragraph(f"<b>{alias}</b> : {valeur}", styles["BodyText"]))
 
+                        # --- CHAMPS PHOTO ---
                         elif typ == "photo":
-                            if os.path.exists(valeur):
-                                story.append(Spacer(1, 10))
-                                img = Image(valeur)
-                                img._restrictSize(A4[0] - 100, 300)
-                                story.append(img)
-                                story.append(Spacer(1, 10))
-                            else:
-                                story.append(Paragraph(f"<b>{alias}</b> : [Fichier introuvable : {valeur}]", styles["Italic"]))
-                else:
-                    story.append(Paragraph("(Aucun champ sélectionné pour cette section)", styles["Italic"]))
+                            # Ne rien afficher si fichier manquant
+                            if not os.path.exists(valeur):
+                                continue
 
-                story.append(Spacer(1, 15))
+                            story.append(Spacer(1, 10))
+                            img = Image(valeur)
+                            img._restrictSize(A4[0] - 100, 300)
+                            story.append(img)   
+                            story.append(Spacer(1, 10))
+
+                    story.append(Spacer(1, 15))
 
             if idx < len(feats_form) - 1:
                 story.append(PageBreak())
