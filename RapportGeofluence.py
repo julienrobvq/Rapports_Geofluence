@@ -14,7 +14,7 @@ class RapportGeofluence:
     def initGui(self):
 
         # --- Rapport EEE ---
-        self.action_eee = QAction(QIcon(), "Rapport EEE", self.iface.mainWindow())
+        self.action_eee = QAction(QIcon(), "Rapport Espèces exotiques envahissantes", self.iface.mainWindow())
         self.action_eee.triggered.connect(self.run_eee)
         self.iface.addPluginToMenu("&Rapports Géofluence", self.action_eee)
         self.actions.append(self.action_eee)

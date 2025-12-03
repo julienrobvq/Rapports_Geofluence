@@ -5,8 +5,10 @@ from qgis.core import QgsProject, QgsExpression
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, PageBreak, Image
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import Paragraph as RLParagraph, Spacer as RLSpacer, PageBreak as RLPageBreak, Image as RLImage
 import os
 from PyQt5.QtCore import QDate, QTime, QDateTime
+from docx import Document
 
 class BaseRapportDialog(QDialog):
 
@@ -18,7 +20,7 @@ class BaseRapportDialog(QDialog):
         self.layer_form_name = layer_form_name
         self.champs_affiches = champs_affiches
         self.sections = sections
-        # --- Interface de base pour TOUS les rapports ---
+        #  Interface de base pour TOUS les rapports 
         self.setWindowTitle("Outil de création de rapport")
         self.resize(380, 420)
 
@@ -30,6 +32,15 @@ class BaseRapportDialog(QDialog):
         layout.addWidget(QLabel("Titre du rapport :"))
         self.titre_rapport = QLineEdit()
         layout.addWidget(self.titre_rapport)
+
+        layout.addWidget(QLabel("Format d'exportation :"))
+        fmt_layout = QHBoxLayout()
+        self.radio_pdf = QRadioButton("PDF")
+        self.radio_word = QRadioButton("Word")
+        self.radio_pdf.setChecked(True)
+        fmt_layout.addWidget(self.radio_pdf)
+        fmt_layout.addWidget(self.radio_word)
+        layout.addLayout(fmt_layout)
 
         layout.addWidget(QLabel("Champs à inclure dans le rapport :"))
         scroll = QScrollArea()
@@ -55,11 +66,11 @@ class BaseRapportDialog(QDialog):
         layout.addWidget(self.btn_ok)
         self.btn_ok.clicked.connect(self.accept)
 
-        # --- Couches QGIS ---
+        #  Couches QGIS 
         self.layer_form_name = layer_form_name
         layers_form = QgsProject.instance().mapLayersByName(self.layer_form_name)
         if not layers_form:
-            QMessageBox.critical(self, "Erreur", f"Couche '{self.layer_form_name}' introuvable.")
+            QMessageBox.critical(self, "Erreur", "Couche introuvable.")
             self.reject(); return
 
         self.layer_form = layers_form[0]
@@ -67,7 +78,7 @@ class BaseRapportDialog(QDialog):
         # Couche événement commune à tous les rapports
         layers_evt = QgsProject.instance().mapLayersByName("Evenement")
         if not layers_evt:
-            QMessageBox.critical(self, "Erreur", "Couche 'Evenement' introuvable.")
+            QMessageBox.critical(self, "Erreur", "Couche 'Evenement introuvable.")
             self.reject(); return
 
         self.layer_evt = layers_evt[0]
@@ -164,7 +175,7 @@ class BaseRapportDialog(QDialog):
         cfg = field.editorWidgetSetup()
         value = feature.attribute(field_name)
 
-        # --- Gestion des dates/heures ---
+        #  Gestion des dates/heures 
         from PyQt5.QtCore import QDate, QTime, QDateTime
 
         # tests directs
@@ -266,84 +277,100 @@ class BaseRapportDialog(QDialog):
         return str(value)
 
     def accept(self):
+        #  Récupération des paramètres 
         id_proj, champs, titre_rapport = self.get_selection()
+        fmt = "PDF" if self.radio_pdf.isChecked() else "Word"
 
-        # --- Charger Evenement ---
+        #  Extensions suggérées 
+        default_name = "Rapport.pdf" if fmt == "PDF" else "Rapport.docx"
+        filter_str = (
+            "PDF (*.pdf);;Tous les fichiers (*.*)"
+            if fmt == "PDF"
+            else "Word (*.docx);;Tous les fichiers (*.*)"
+        )
+
+        # Enregistrement
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Enregistrer le rapport",
+            default_name,
+            filter_str
+        )
+
+        if not file_path:
+            return
+
+        # Extension
+        base, ext = os.path.splitext(file_path)
+        ext = ext.lower()
+
+        if fmt == "PDF" and ext != ".pdf":
+            file_path = base + ".pdf"
+        elif fmt == "Word" and ext != ".docx":
+            file_path = base + ".docx"
+
+        # Récupération des données
+
         layer_evt = self.layer_evt
         expr_evt = QgsExpression.createFieldEqualityExpression("ID_Proj", str(id_proj))
         layer_evt.selectByExpression(expr_evt)
         feats_evt = layer_evt.selectedFeatures()
 
         if not feats_evt:
-            QMessageBox.warning(self, "Avertissement", f"Aucun événement trouvé pour le projet {id_proj}.")
+            QMessageBox.warning(self, "Avertissement", f"Aucun événement trouvé pour {id_proj}.")
             return
 
-        # Tous les ID_EVEN du projet
-        id_even_values = [f["ID_EVEN"] for f in feats_evt if f["ID_EVEN"] not in (None, "", " ")]
+        id_even_values = [
+            f["ID_EVEN"] for f in feats_evt
+            if f["ID_EVEN"] not in (None, "", " ")
+        ]
+
         if not id_even_values:
             QMessageBox.warning(self, "Avertissement", "Aucun ID_EVEN trouvé pour ce projet.")
             return
 
-        # --- Sélection des enregistrements Form_* ---
         valeurs_str = ",".join([f"'{v}'" for v in id_even_values])
         expr_form = f'"ID_EVEN" IN ({valeurs_str})'
         self.layer_form.selectByExpression(expr_form)
         feats_form = self.layer_form.selectedFeatures()
 
         if not feats_form:
-            QMessageBox.warning(self, "Avertissement", "Aucun enregistrement trouvé pour ce projet.")
+            QMessageBox.warning(self, "Avertissement", "Aucun enregistrement trouvé.")
             return
 
-        # --- Choisir le fichier de sortie ---
-        file_path, _ = QFileDialog.getSaveFileName(
-            None,
-            "Enregistrer le rapport",
-            "Rapport.pdf",
-            "Fichiers PDF (*.pdf)"
-        )
-
-        if not file_path:
-            QMessageBox.information(None, "Annulé", "Génération du rapport annulée.")
-            return
-
-        # --- Dossier DCIM ---
-        project_path = QgsProject.instance().fileName()
-        project_dir = os.path.dirname(project_path)
+        # DCIM
+        project_dir = os.path.dirname(QgsProject.instance().fileName())
         photo_root = os.path.join(project_dir, "DCIM")
 
-        # --- Création du PDF ---
-        doc = SimpleDocTemplate(file_path, pagesize=A4)
+        # Structure du rapport
+
         styles = getSampleStyleSheet()
         story = []
 
-        # Titre
+        # Titre 
         story.append(Paragraph(titre_rapport, styles["Title"]))
-        story.append(Spacer(1, 20))
+        story.append(Spacer(1, 12))
 
-        # Boucle sur les enregistrements
+        #  Contenu
         for idx, feat in enumerate(feats_form):
-
             id_even = feat["ID_EVEN"]
             feat_evt = next((e for e in feats_evt if e["ID_EVEN"] == id_even), None)
             if not feat_evt:
                 continue
-            
-            # Contenu des sections
-            
-            for titre, liste_champs in self.sections.items():
 
+            for titre, liste_champs in self.sections.items():
                 contenu = []
 
                 for champ in liste_champs:
                     if champ not in champs:
                         continue
 
-                    # Champ provenant de Form_*
+                    # formulaire
                     if champ in self.layer_form.fields().names():
                         alias = self.layer_form.fields().field(champ).alias() or champ
                         valeur = self.get_display_value(self.layer_form, feat, champ)
 
-                    # Champ provenant de Evenement
+                    # evenement
                     elif champ in self.layer_evt.fields().names():
                         alias = self.layer_evt.fields().field(champ).alias() or champ
                         valeur = self.get_evt_display_value(feat_evt, champ)
@@ -354,46 +381,79 @@ class BaseRapportDialog(QDialog):
                     if valeur in ("", None, "NULL", "Null"):
                         continue
 
-                    # Gestion des photos
+                    # photos
                     if "photo" in champ.lower():
                         rel_path = valeur.replace("/", os.sep).replace("\\", os.sep).lstrip(os.sep)
                         if rel_path.upper().startswith("DCIM" + os.sep.upper()):
                             rel_path = rel_path[len("DCIM" + os.sep):]
-
                         photo_path = os.path.normpath(os.path.join(photo_root, rel_path))
                         contenu.append(("photo", alias, photo_path))
-
                     else:
                         contenu.append(("texte", alias, valeur))
 
-                # Ajouter le contenu final de la section
-
                 if contenu:
                     story.append(Paragraph(titre, styles["Heading2"]))
+                    story.append(Spacer(1, 6))
 
                     for typ, alias, valeur in contenu:
-
-                        # --- CHAMPS TEXTE ---
                         if typ == "texte":
                             story.append(Paragraph(f"<b>{alias}</b> : {valeur}", styles["BodyText"]))
 
-                        # --- CHAMPS PHOTO ---
                         elif typ == "photo":
-                            # Ne rien afficher si fichier manquant
-                            if not os.path.exists(valeur):
-                                continue
+                            if os.path.exists(valeur):
+                                story.append(Spacer(1, 4))
+                                img = Image(valeur)
+                                img._restrictSize(A4[0] - 100, 300)
+                                story.append(img)
+                                story.append(Spacer(1, 4))
 
-                            story.append(Spacer(1, 10))
-                            img = Image(valeur)
-                            img._restrictSize(A4[0] - 100, 300)
-                            story.append(img)   
-                            story.append(Spacer(1, 10))
-
-                    story.append(Spacer(1, 15))
+                    story.append(Spacer(1, 12))
 
             if idx < len(feats_form) - 1:
                 story.append(PageBreak())
 
-        doc.build(story)
-        QMessageBox.information(self, "Succès", "Rapport généré.")
+        # Exportation
+
+        if fmt == "PDF":
+            doc = SimpleDocTemplate(file_path, pagesize=A4)
+            doc.build(story)
+            QMessageBox.information(self, "Bravo", "PDF généré")
+            super().accept()
+            return
+
+        # Word
+        docx = Document()
+        docx.add_heading(titre_rapport, level=1)
+
+        is_first = True
+        from docx.enum.style import WD_STYLE_TYPE
+
+        for elt in story:
+            if is_first:
+                is_first = False
+                continue
+
+            if isinstance(elt, RLParagraph):
+                txt = elt.text.replace("<b>", "").replace("</b>", "")
+
+                if elt.style.name == "Heading2":
+                    docx.add_heading(txt, level=2)
+                else:
+                    docx.add_paragraph(txt)
+
+            elif isinstance(elt, RLSpacer):
+                docx.add_paragraph("")
+
+            elif isinstance(elt, RLPageBreak):
+                docx.add_page_break()
+
+            elif isinstance(elt, RLImage):
+                img_path = elt.filename
+                if os.path.exists(img_path):
+                    from docx.shared import Inches
+                    docx.add_picture(img_path, width=Inches(3))
+                    docx.add_paragraph("")
+
+        docx.save(file_path)
+        QMessageBox.information(self, "Bravo", "Word généré")
         super().accept()
