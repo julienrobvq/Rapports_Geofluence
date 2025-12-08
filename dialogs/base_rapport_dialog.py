@@ -9,6 +9,7 @@ from reportlab.platypus import Paragraph as RLParagraph, Spacer as RLSpacer, Pag
 import os
 from PyQt5.QtCore import QDate, QTime, QDateTime
 from docx import Document
+from docx.shared import Pt, Inches
 
 class BaseRapportDialog(QDialog):
 
@@ -423,36 +424,64 @@ class BaseRapportDialog(QDialog):
 
         # Word
         docx = Document()
-        docx.add_heading(titre_rapport, level=1)
+        styles = docx.styles
 
-        is_first = True
-        from docx.enum.style import WD_STYLE_TYPE
+        # Mise en page
+
+        styles["Normal"].paragraph_format.space_after = Pt(1.5)
+        styles["Normal"].paragraph_format.space_before = Pt(1.5)
+
+        h1 = styles["Heading 1"]
+        h1.paragraph_format.space_after = Pt(12)
+        h1.paragraph_format.space_before = Pt(0)
+
+        h2 = styles["Heading 2"]
+        h2.paragraph_format.space_after = Pt(3)
+        h2.paragraph_format.space_before = Pt(3)
+
+        styles["List Bullet"].paragraph_format.space_after = Pt(3)
+        styles["List Bullet"].paragraph_format.space_before = Pt(3)
+
+        # Titre niveau 1
+        docx.add_heading(titre_rapport or "Rapport", level=1)
+
+        is_first = True # évite qu'on ait deux fois le titre
 
         for elt in story:
+
             if is_first:
                 is_first = False
                 continue
 
+            # Rapport
             if isinstance(elt, RLParagraph):
+
                 txt = elt.text.replace("<b>", "").replace("</b>", "")
 
+                # Titre niveau 2 
                 if elt.style.name == "Heading2":
                     docx.add_heading(txt, level=2)
+
+                # Lise a puce
                 else:
-                    docx.add_paragraph(txt)
+                    if " : " in txt:
+                        alias, valeur = txt.split(" : ", 1)
+                        p = docx.add_paragraph(style="List Bullet")
+                        run_alias = p.add_run(f"{alias} : ")
+                        run_alias.bold = True
+                        p.add_run(valeur)
+                    else:
+                        docx.add_paragraph(txt, style="List Bullet")
 
-            elif isinstance(elt, RLSpacer):
-                docx.add_paragraph("")
-
+            # Saut de page après une entité
             elif isinstance(elt, RLPageBreak):
                 docx.add_page_break()
 
+            #  image
             elif isinstance(elt, RLImage):
                 img_path = elt.filename
                 if os.path.exists(img_path):
-                    from docx.shared import Inches
-                    docx.add_picture(img_path, width=Inches(3))
-                    docx.add_paragraph("")
+                    docx.add_picture(img_path, width=Inches(2.2))
 
         docx.save(file_path)
         QMessageBox.information(self, "Bravo", "Word généré")
