@@ -30,9 +30,20 @@ class RapportMHH(BaseRapportDialog):
             layer_form_name="Form_MHH",
             champs_affiches=champs_affiches,
             sections=sections,
-            parent=parent
+            parent=parent,
+            custom_mode=True
         )
+        # si couche MHH est pas la on cancel
+        if not hasattr(self, "layer_form"):
+            self._init_ok = False
+            return
 
+        self._init_ok = True
+    
+    def exec_(self):
+        if not getattr(self, "_init_ok", True):
+            return 0
+        return super().exec_()
     def export_word(self, file_path, story, titre_rapport):
 
         template_path = os.path.join(

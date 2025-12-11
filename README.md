@@ -20,8 +20,12 @@ Finalement, vous pouvez sélectionner manuellement les champs que vous souhaitez
 
 ## Note pour les rapports Word
 
-La génération des rapports Word s'effectue au moyen du package python-docx. Pour pouvoir l'utiliser, il faut assurer l'installation du package et des dépendances.
+La génération des rapports Word s'effectue au moyen de plusieurs package qui ne sont pas compris par défaut dans l'environnement de QGIS. Pour pouvoir l'utiliser, il faut assurer l'installation des package et des dépendances.
 
-Pour ce faire, copier le contenu du dossier "python_docx" du répertoire. Coller ensuite le contenu dans le répertoire site-packages de QGIS, sur votre poste de travail : "C:\Program Files\QGIS 3.40.11\apps\Python312\Lib\site-packages".
+Pour ce faire, copier le contenu du dossier "package-word" dans le dossier site-packages de QGIS, sur votre poste de travail : "C:\Program Files\QGIS 3.40.11\apps\Python312\Lib\site-packages".
 
-Ce répertoire permet l'installation de packages tiers dans QGIS. Redémarrer QGIS et vous serez en mesure d'exporter des rapports Word.
+Ce répertoire permet l'installation de packages tiers dans QGIS. Redémarrer le logiciel et vous serez en mesure d'exporter des rapports Word.
+
+## Pour les photos
+
+Pour que les photos prises à partir des formulaires apparaissent dans les rapports, vous devez créer un dossier DCIM, au même endroit que le projet QGIS utilisé pour générer les rapports. Placer les fichiers photo dans ce dossier en vous assurant que les noms des fichiers correspondent effectivement à ceux qu'on retrouve dans le formulaire. Si vous n'avez pas modifié le nom des fichiers après la collecte des données, les noms devraient correspondre sans problème.

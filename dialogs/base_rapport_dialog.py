@@ -15,9 +15,10 @@ class BaseRapportDialog(QDialog):
 
     """Classe générique réutilisable par tous les rapports"""
 
-    def __init__(self, layer_form_name, champs_affiches, sections, parent=None):
+    def __init__(self, layer_form_name, champs_affiches, sections, parent=None, custom_mode=False):
         super().__init__(parent)
-
+        
+        self.custom_mode = custom_mode
         self.layer_form_name = layer_form_name
         self.champs_affiches = champs_affiches
         self.sections = sections
@@ -25,17 +26,20 @@ class BaseRapportDialog(QDialog):
         #  Interface de base pour TOUS les rapports 
         self.setWindowTitle("Outil de création de rapport")
         self.resize(380, 420)
+            
 
         layout = QVBoxLayout(self)
         layout.addWidget(QLabel("Sélectionnez un projet :"))
         self.proj_combo = QComboBox()
         layout.addWidget(self.proj_combo)
 
-        layout.addWidget(QLabel("Titre du rapport :"))
+        self.lbl_titre = QLabel("Titre du rapport :")
+        layout.addWidget(self.lbl_titre)
         self.titre_rapport = QLineEdit()
         layout.addWidget(self.titre_rapport)
 
-        layout.addWidget(QLabel("Format d'exportation :"))
+        self.lbl_format = QLabel("Format d'exportation :")
+        layout.addWidget(self.lbl_format)
         fmt_layout = QHBoxLayout()
         self.radio_pdf = QRadioButton("PDF")
         self.radio_word = QRadioButton("Word")
@@ -44,13 +48,14 @@ class BaseRapportDialog(QDialog):
         fmt_layout.addWidget(self.radio_word)
         layout.addLayout(fmt_layout)
 
-        layout.addWidget(QLabel("Champs à inclure dans le rapport :"))
-        scroll = QScrollArea()
+        self.lbl_champs = QLabel("Champs à inclure dans le rapport :")
+        layout.addWidget(self.lbl_champs)
+        self.scroll = QScrollArea()
         container = QWidget()
         self.champ_layout = QGridLayout(container)
-        scroll.setWidget(container)
-        scroll.setWidgetResizable(True)
-        layout.addWidget(scroll)
+        self.scroll.setWidget(container)
+        self.scroll.setWidgetResizable(True)
+        layout.addWidget(self.scroll)
 
         # Boutons sélectionner / désélectionner
         btn_layout = QHBoxLayout()
@@ -73,8 +78,10 @@ class BaseRapportDialog(QDialog):
         layers_form = QgsProject.instance().mapLayersByName(self.layer_form_name)
         if not layers_form:
             QMessageBox.critical(self, "Erreur", "Couche introuvable.")
-            self.reject(); return
-
+            self._init_ok = False
+            return
+        
+        self._init_ok = True
         self.layer_form = layers_form[0]
 
         # Couche événement commune à tous les rapports
@@ -94,6 +101,21 @@ class BaseRapportDialog(QDialog):
         self.remplir_projets()
         self.remplir_champs()
 
+        # si le mode custom est activé, on masque certaines options
+
+        if self.custom_mode:
+            self.resize(380, 100)
+            self.lbl_titre.hide()
+            self.titre_rapport.hide()
+
+            self.lbl_format.hide()
+            self.radio_pdf.hide()
+            self.radio_word.hide()
+
+            self.lbl_champs.hide()
+            self.scroll.hide()
+            self.btn_select_all.hide()
+            self.btn_unselect_all.hide()
 
     # Liste des projets
     def remplir_projets(self):
@@ -293,7 +315,10 @@ class BaseRapportDialog(QDialog):
     def accept(self):
         #  Récupération des paramètres 
         id_proj, champs, titre_rapport = self.get_selection()
-        fmt = "PDF" if self.radio_pdf.isChecked() else "Word"
+        if self.custom_mode:
+            fmt = "Word"
+        else:
+            fmt = "PDF" if self.radio_pdf.isChecked() else "Word"
 
         self.current_id_proj = id_proj
         self.current_champs = champs
@@ -447,6 +472,11 @@ class BaseRapportDialog(QDialog):
             super().accept()
             return
     
+    def exec_(self):
+        if not getattr(self, "_init_ok", True):
+            return 0
+        return super().exec_()
+
     def export_word(self, file_path, story, titre_rapport):
         docx = Document()
         styles = docx.styles

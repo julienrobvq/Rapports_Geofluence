@@ -11,7 +11,7 @@ import re
 
 #Parameters
 dossier_qml = "qml"
-dossier_sortie = os.path.join("dialogs")
+dossier_sortie = os.path.join("todo")
 os.makedirs(dossier_sortie, exist_ok=True)
 
 
@@ -96,37 +96,38 @@ def extraire_structure(qml_path):
 for fichier in os.listdir(dossier_qml):
     if not fichier.lower().endswith(".qml"):
         continue
+    
+    if fichier == "Form_ISA_Propriete.qml":
+        chemin_qml = os.path.join(dossier_qml, fichier)
 
-    chemin_qml = os.path.join(dossier_qml, fichier)
+        champs, sections = extraire_structure(chemin_qml)
 
-    champs, sections = extraire_structure(chemin_qml)
+        layername = os.path.splitext(fichier)[0]
+        py_name = pythonize_name(layername)
+        class_name = "Rapport" + classize_name(layername) + "Dialog"
 
-    layername = os.path.splitext(fichier)[0]
-    py_name = pythonize_name(layername)
-    class_name = "Rapport" + classize_name(layername) + "Dialog"
+        fichier_sortie = os.path.join(
+            dossier_sortie,
+            f"rapport_{py_name}_dialog.py"
+        )
 
-    fichier_sortie = os.path.join(
-        dossier_sortie,
-        f"rapport_{py_name}_dialog.py"
-    )
+        contenu = f"# dialogs/rapport_{py_name}_dialog.py\n\n"
+        contenu += "from .base_rapport_dialog import BaseRapportDialog\n\n"
+        contenu += f"class {class_name}(BaseRapportDialog):\n"
+        contenu += f"    def __init__(self):\n\n"
 
-    contenu = f"# dialogs/rapport_{py_name}_dialog.py\n\n"
-    contenu += "from .base_rapport_dialog import BaseRapportDialog\n\n"
-    contenu += f"class {class_name}(BaseRapportDialog):\n"
-    contenu += f"    def __init__(self):\n\n"
+        contenu += f"        champs = {format_list(champs, indent=12)}\n\n"
 
-    contenu += f"        champs = {format_list(champs, indent=12)}\n\n"
+        contenu += "        sections = {\n"
+        for section, champs_list in sections.items():
+            contenu += f"            \"{section}\": {format_list(champs_list, indent=16)},\n"
+        contenu += "        }\n\n"
 
-    contenu += "        sections = {\n"
-    for section, champs_list in sections.items():
-        contenu += f"            \"{section}\": {format_list(champs_list, indent=16)},\n"
-    contenu += "        }\n\n"
+        contenu += f"        super().__init__(\"{layername}\", champs, sections)\n"
 
-    contenu += f"        super().__init__(\"{layername}\", champs, sections)\n"
+        with open(fichier_sortie, "w", encoding="utf-8") as f:
+            f.write(contenu)
 
-    with open(fichier_sortie, "w", encoding="utf-8") as f:
-        f.write(contenu)
-
-    print(f"Créé : {fichier_sortie}")
+        print(f"Créé : {fichier_sortie}")
 
 print("\nDialogs générés dans :", dossier_sortie)

@@ -9,7 +9,7 @@ import os
 from qgis.core import QgsProject
 
 # chemin
-dossier_sortie = r"C:\Users\ROBVQ\Desktop\test_rapport\qml"
+dossier_sortie = r"D:\_GEOMATIQUE\Projets_ROBVQ\Geofluence\Plugin_Geofluence\PDF_Report\report_tools\qml"
 
 # Crée le dossier s'il n'existe pas
 os.makedirs(dossier_sortie, exist_ok=True)

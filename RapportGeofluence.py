@@ -5,6 +5,7 @@ from .dialogs.rapport_eee_site_dialog import RapportEEEDialog
 from .dialogs.rapport_actdetection_dialog import RapportActDetectionDialog
 from .dialogs.rapport_physicochimie_dialog import RapportPhysicochimieDialog
 from .dialogs.rapport_mhh_dialog import RapportMHH
+from .dialogs.rapport_isa_dialog import RapportISA
 
 class RapportGeofluence:
 
@@ -36,7 +37,14 @@ class RapportGeofluence:
         self.action_mhh = QAction(QIcon(), "Rapport Milieux humides", self.iface.mainWindow())
         self.action_mhh.triggered.connect(self.run_mhh)
         self.iface.addPluginToMenu("&Rapports Géofluence", self.action_mhh)
-        self.actions.append(self.action_mhh)        
+        self.actions.append(self.action_mhh)
+
+        # Rapport ISA
+        self.action_isa = QAction(QIcon(), "Lettre Installation septique autonome", self.iface.mainWindow())
+        self.action_isa.triggered.connect(self.run_isa)
+        self.iface.addPluginToMenu("&Rapports Géofluence", self.action_isa)
+        self.actions.append(self.action_isa)
+
 
 
     def unload(self):
@@ -57,4 +65,8 @@ class RapportGeofluence:
 
     def run_mhh(self):
         dlg = RapportMHH()
+        dlg.exec_()
+
+    def run_isa(self):
+        dlg = RapportISA()
         dlg.exec_()
