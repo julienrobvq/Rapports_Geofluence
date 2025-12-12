@@ -6,45 +6,54 @@ from .dialogs.rapport_actdetection_dialog import RapportActDetectionDialog
 from .dialogs.rapport_physicochimie_dialog import RapportPhysicochimieDialog
 from .dialogs.rapport_mhh_dialog import RapportMHH
 from .dialogs.rapport_isa_dialog import RapportISA
+from qgis.core import QgsProject
 
 class RapportGeofluence:
 
     def __init__(self, iface):
         self.iface = iface
         self.actions = []
-
+    
+    def has_layers(self,layer_names):
+        project = QgsProject.instance()
+        return all(project.mapLayersByName(name) for name in layer_names)
+    
     def initGui(self):
 
         # Rapport EEE
-        self.action_eee = QAction(QIcon(), "Rapport Espèces exotiques envahissantes", self.iface.mainWindow())
-        self.action_eee.triggered.connect(self.run_eee)
-        self.iface.addPluginToMenu("&Rapports Géofluence", self.action_eee)
-        self.actions.append(self.action_eee)
+        if self.has_layers(["Form_EEE"]):    
+            self.action_eee = QAction(QIcon(), "Rapport Espèces exotiques envahissantes", self.iface.mainWindow())
+            self.action_eee.triggered.connect(self.run_eee)
+            self.iface.addPluginToMenu("&Rapports Géofluence", self.action_eee)
+            self.actions.append(self.action_eee)
 
         # Rapport Activité de détection
-        self.action_act = QAction(QIcon(), "Rapport Activité de détection", self.iface.mainWindow())
-        self.action_act.triggered.connect(self.run_actdetection)
-        self.iface.addPluginToMenu("&Rapports Géofluence", self.action_act)
-        self.actions.append(self.action_act)
+        if self.has_layers(["Form_ActDetection"]):    
+            self.action_act = QAction(QIcon(), "Rapport Activité de détection", self.iface.mainWindow())
+            self.action_act.triggered.connect(self.run_actdetection)
+            self.iface.addPluginToMenu("&Rapports Géofluence", self.action_act)
+            self.actions.append(self.action_act)
 
         # Rapport Physicochimie
-        self.action_physico = QAction(QIcon(), "Rapport Physicochimie", self.iface.mainWindow())
-        self.action_physico.triggered.connect(self.run_physicochimie)
-        self.iface.addPluginToMenu("&Rapports Géofluence", self.action_physico)
-        self.actions.append(self.action_physico)
+        if self.has_layers(["Form_PhysicoChimie"]):      
+            self.action_physico = QAction(QIcon(), "Rapport Physicochimie", self.iface.mainWindow())
+            self.action_physico.triggered.connect(self.run_physicochimie)
+            self.iface.addPluginToMenu("&Rapports Géofluence", self.action_physico)
+            self.actions.append(self.action_physico)
 
         # Rapport Milieux humides
-        self.action_mhh = QAction(QIcon(), "Rapport Milieux humides", self.iface.mainWindow())
-        self.action_mhh.triggered.connect(self.run_mhh)
-        self.iface.addPluginToMenu("&Rapports Géofluence", self.action_mhh)
-        self.actions.append(self.action_mhh)
+        if self.has_layers(["Form_MHH"]):    
+            self.action_mhh = QAction(QIcon(), "Rapport Milieux humides", self.iface.mainWindow())
+            self.action_mhh.triggered.connect(self.run_mhh)
+            self.iface.addPluginToMenu("&Rapports Géofluence", self.action_mhh)
+            self.actions.append(self.action_mhh)
 
         # Rapport ISA
-        self.action_isa = QAction(QIcon(), "Lettre Installation septique autonome", self.iface.mainWindow())
-        self.action_isa.triggered.connect(self.run_isa)
-        self.iface.addPluginToMenu("&Rapports Géofluence", self.action_isa)
-        self.actions.append(self.action_isa)
-
+        if self.has_layers(["Form_ISA_Propriete", "Form_ISA_Puits", "Form_ISA_Fosse", "Form_ISA_Epurateur"]):
+            self.action_isa = QAction(QIcon(), "Lettre Installation septique autonome", self.iface.mainWindow())
+            self.action_isa.triggered.connect(self.run_isa)
+            self.iface.addPluginToMenu("&Rapports Géofluence", self.action_isa)
+            self.actions.append(self.action_isa)
 
 
     def unload(self):
