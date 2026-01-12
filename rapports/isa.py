@@ -51,7 +51,7 @@ class RapportISA(BaseRapportDialog):
 
         template_path = os.path.join(
             os.path.dirname(__file__),
-            "template_isa.docx"
+            ".\templates\template_isa.docx"
         )
         doc = DocxTemplate(template_path)
 

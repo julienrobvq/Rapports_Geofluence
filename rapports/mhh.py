@@ -38,7 +38,7 @@ class RapportMHH(BaseRapportDialog):
 
         template_path = os.path.join(
             os.path.dirname(__file__),
-            "template_mhh.docx"
+            ".\templates\template_mhh.docx"
         )
         doc = DocxTemplate(template_path)
 
