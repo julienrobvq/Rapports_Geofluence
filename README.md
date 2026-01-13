@@ -14,7 +14,7 @@ On vous demande de sélectionner un projet ou une période pour sélectionner le
 
 Pour générer des rapports au format Word, vous devez installer certains packages dans l'environnement de QGIS.
 
-Pour ce faire, copier simplement le contenu du dossier "package-word" dans le dossier site-packages de QGIS, sur votre poste de travail : "C:\Program Files\QGIS 3.40.11\apps\Python312\Lib\site-packages".
+Pour ce faire, copier simplement le contenu du dossier "packages" dans le dossier site-packages de QGIS, sur votre poste de travail : "C:\Program Files\QGIS 3.40.11\apps\Python312\Lib\site-packages".
 
 Redémarrer QGIS pour activer les nouveaux packages.
 
