@@ -4,7 +4,7 @@ from qgis.PyQt.QtWidgets import *
 from qgis.core import QgsProject, QgsExpression
 from PyQt5.QtCore import QDate, QTime, QDateTime
 
-class BaseRapportDialog(QDialog):
+class BaseRapport(QDialog):
 
     def __init__(self, layer_form_name, champs_affiches, parent=None):
         super().__init__(parent)
@@ -13,6 +13,7 @@ class BaseRapportDialog(QDialog):
         self.champs_affiches = champs_affiches
 
         #  Interface de base
+        
         self.setWindowTitle("Outil de création de rapport")
         self.resize(380, 100)
 
@@ -21,12 +22,14 @@ class BaseRapportDialog(QDialog):
         self.proj_combo = QComboBox()
         layout.addWidget(self.proj_combo)
 
-        # Bouton OK
+        # Bouton
+
         self.btn_ok = QPushButton("Générer le rapport")
         layout.addWidget(self.btn_ok)
         self.btn_ok.clicked.connect(self.accept)
 
         #  Couches QGIS
+
         self.layer_form_name = layer_form_name
         layers_form = QgsProject.instance().mapLayersByName(self.layer_form_name)
         if not layers_form:
@@ -38,12 +41,13 @@ class BaseRapportDialog(QDialog):
         self.layer_form = layers_form[0]
 
         # Evenement
-        layers_evt = QgsProject.instance().mapLayersByName("Evenement")
-        if not layers_evt:
+
+        layers_even = QgsProject.instance().mapLayersByName("Evenement")
+        if not layers_even:
             QMessageBox.critical(self, "Erreur", "Couche 'Evenement introuvable.")
             self.reject(); return
 
-        self.layer_evt = layers_evt[0]
+        self.layer_even = layers_even[0]
         self.id_field_proj = "ID_Proj"
         self.remplir_projets()
     
@@ -51,13 +55,14 @@ class BaseRapportDialog(QDialog):
         raise NotImplementedError("Erreur de génération de rapport")
 
     # Liste des projets
+
     def remplir_projets(self):
-        field = self.layer_evt.fields().field(self.id_field_proj)
+        field = self.layer_even.fields().field(self.id_field_proj)
         cfg = field.editorWidgetSetup()
 
         projets_dict = {}
 
-        for f in self.layer_evt.getFeatures():
+        for f in self.layer_even.getFeatures():
             raw_value = f[self.id_field_proj]
             if raw_value in (None, "", " "):
                 continue
@@ -65,11 +70,13 @@ class BaseRapportDialog(QDialog):
             display_value = raw_value
 
             # ValueMap
+
             if cfg.type() == "ValueMap":
                 mapping = cfg.config().get("map", {})
                 display_value = mapping.get(str(raw_value), raw_value)
 
             # ValueRelation
+
             elif cfg.type() == "ValueRelation":
                 rel_layer_id = cfg.config().get("Layer")
                 key_field = cfg.config().get("Key")
@@ -87,7 +94,9 @@ class BaseRapportDialog(QDialog):
             self.proj_combo.addItem(display, raw)
 
     # Section rapports
+
     def get_selection(self):
+        
         id_proj = self.proj_combo.currentData()
         return id_proj
 
@@ -95,16 +104,18 @@ class BaseRapportDialog(QDialog):
     def get_display_value(self, layer, feature, field_name):
         return self._get_display_value_core(layer, feature, field_name)
 
-    def get_evt_display_value(self, feat_evt, field_name):
-        return self._get_display_value_core(self.layer_evt, feat_evt, field_name)
+    def get_even_display_value(self, feat_even, field_name):
+        return self._get_display_value_core(self.layer_even, feat_even, field_name)
 
     # Génération du rapport 
+
     def _get_display_value_core(self, layer, feature, field_name):
         field = layer.fields().field(field_name)
         cfg = field.editorWidgetSetup()
         value = feature.attribute(field_name)
         
-        # --- Choix multiples ---
+        # Choix multiples
+        
         if isinstance(value, str) and value.startswith("{") and value.endswith("}"):
             raw = value[1:-1]
             items, current, in_quotes = [], "", False
@@ -158,7 +169,8 @@ class BaseRapportDialog(QDialog):
 
             return ", ".join(valeurs_affichees)
 
-        # --- Dates / heures ---
+        # Date et heure
+
         if isinstance(value, QDateTime):
             return value.toString("yyyy-MM-dd HH:mm")
         if isinstance(value, QTime):
@@ -180,15 +192,18 @@ class BaseRapportDialog(QDialog):
         if value in (None, ""):
             return ""
 
-        # --- ValueMap ---
+        # ValueMap
+
         if cfg.type() == "ValueMap":
             raw_map = cfg.config().get("map", {})
 
-            # Cas 1 : ValueMap stocké sous forme de dict
+            # Dictionnaire
+
             if isinstance(raw_map, dict):
                 return raw_map.get(str(value), str(value))
 
-            # Cas 2 : ValueMap stocké sous forme de liste
+            # Liste
+
             elif isinstance(raw_map, list):
                 for item in raw_map:
                     if isinstance(item, dict):
@@ -198,7 +213,8 @@ class BaseRapportDialog(QDialog):
 
             return str(value)
 
-        # --- ValueRelation ---
+        # ValueRelation
+
         if cfg.type() == "ValueRelation":
             rel_layer_id = cfg.config().get("Layer")
             key_field = cfg.config().get("Key")
@@ -213,15 +229,12 @@ class BaseRapportDialog(QDialog):
         return str(value)
 
     def accept(self):
-        #  Récupération des paramètres 
+        
+        # Paramètres d'enregistrement
         id_proj = self.get_selection()
-
         self.current_id_proj = id_proj
-
-        #  Extensions suggérées 
         default_name = "Rapport.docx"
         
-        # Enregistrement
         file_path, _ = QFileDialog.getSaveFileName(
             self,
             "Enregistrer le rapport",
@@ -235,17 +248,17 @@ class BaseRapportDialog(QDialog):
 
         # Récupération des données
 
-        layer_evt = self.layer_evt
-        expr_evt = QgsExpression.createFieldEqualityExpression("ID_Proj", str(id_proj))
-        layer_evt.selectByExpression(expr_evt)
-        feats_evt = layer_evt.selectedFeatures()
+        layer_even = self.layer_even
+        expr_even = QgsExpression.createFieldEqualityExpression("ID_Proj", str(id_proj))
+        layer_even.selectByExpression(expr_even)
+        feats_even = layer_even.selectedFeatures()
 
-        if not feats_evt:
+        if not feats_even:
             QMessageBox.warning(self, "Avertissement", f"Aucun événement trouvé pour {id_proj}.")
             return
 
         id_even_values = [
-            f["ID_EVEN"] for f in feats_evt
+            f["ID_EVEN"] for f in feats_even
             if f["ID_EVEN"] not in (None, "", " ")
         ]
 
@@ -257,7 +270,7 @@ class BaseRapportDialog(QDialog):
         expr_form = f'"ID_EVEN" IN ({valeurs_str})'
         self.layer_form.selectByExpression(expr_form)
         feats_form = self.layer_form.selectedFeatures()
-        self.current_feats_evt = feats_evt
+        self.current_feats_even = feats_even
         self.current_feats_form = feats_form
 
         if not feats_form:

@@ -1,13 +1,13 @@
 # rapports/isa.py
 
 import os
-from .base import BaseRapportDialog
+from .base import BaseRapport
 from docxtpl import DocxTemplate
 from qgis.core import QgsProject
 from qgis.PyQt.QtWidgets import QMessageBox
 
 
-class RapportISA(BaseRapportDialog):
+class RapportISA(BaseRapport):
 
     def __init__(self, parent=None):
 
@@ -17,7 +17,7 @@ class RapportISA(BaseRapportDialog):
             parent=parent
         )
 
-        # si couche prop est pas la on cancel
+        # Si couche absente on annule
         if not hasattr(self, "layer_form"):
             self._init_ok = False
             return
@@ -51,7 +51,8 @@ class RapportISA(BaseRapportDialog):
 
         template_path = os.path.join(
             os.path.dirname(__file__),
-            ".\templates\template_isa.docx"
+            "templates",
+            "template_isa.docx"
         )
         doc = DocxTemplate(template_path)
 

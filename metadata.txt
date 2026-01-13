@@ -10,7 +10,7 @@ version=0.1
 author=ROBVQ
 email=julien@robvq.qc.ca
 
-about=Génération de rapports automatisés pour les formulaires de Géofluence. Les rapports sont préformatés par les contributeurs de Géofluence. Si vous souhaitez qu'un rapport soit ajouté à l'extension, faites en la demande auprès d'un contributeur.
+about=Génération de rapports automatisés pour les formulaires de Géofluence. Les rapports sont préformatés par les contributeurs de Géofluence. Si vous souhaitez qu'un rapport soit ajouté à l'extension, faites-en la demande auprès d'un contributeur.
 
 tracker=http://bugs
 repository=http://repo
